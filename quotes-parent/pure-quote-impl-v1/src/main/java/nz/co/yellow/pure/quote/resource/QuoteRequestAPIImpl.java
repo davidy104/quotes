@@ -11,7 +11,8 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
 
-import nz.co.yellow.pure.quote.AbstractAPISupport;
+import nz.co.yellow.pure.quote.GenericAPIError;
+import nz.co.yellow.pure.quote.QuotesAPIUtils;
 import nz.co.yellow.pure.quote.data.QuoteLoadStrategies;
 import nz.co.yellow.pure.quote.data.QuoteRequestReq;
 import nz.co.yellow.pure.quote.data.QuoteRequestResp;
@@ -26,8 +27,7 @@ import org.springframework.stereotype.Component;
 
 @Component("quoteRequestAPI")
 @Path("/pure/quote/quoteRequest")
-public class QuoteRequestAPIImpl extends AbstractAPISupport implements
-		QuoteRequestAPI {
+public class QuoteRequestAPIImpl implements QuoteRequestAPI {
 	private static final Logger LOGGER = LoggerFactory
 			.getLogger(QuoteRequestAPIImpl.class);
 
@@ -42,21 +42,22 @@ public class QuoteRequestAPIImpl extends AbstractAPISupport implements
 		LOGGER.debug("createQuotesRequest start:{}");
 		Long id = null;
 		QuoteRequestResp result = null;
-		doValidationForCreation(quoteRequest);
+		String errorMessage = doValidationForCreation(quoteRequest);
+		GenericAPIError genericAPIError = null;
 
-		if (StringUtils.isEmpty(errorMessage)) {
-			respStatus = Response.Status.BAD_REQUEST;
-		} else {
-			try {
+		try {
+			if (!StringUtils.isEmpty(errorMessage)) {
+				throw new Exception(errorMessage);
+			} else {
 				result = this.quoteRequestDs.createQuoteRequest(quoteRequest);
 				id = result.getId();
-			} catch (Exception e) {
-				exceptionHandle(e);
 			}
+		} catch (Exception e) {
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 
 		LOGGER.debug("createMessageThread end:{}");
-		return buildResponse(id);
+		return QuotesAPIUtils.buildResponse(id, genericAPIError);
 	}
 
 	@Override
@@ -66,16 +67,16 @@ public class QuoteRequestAPIImpl extends AbstractAPISupport implements
 	public Response getQuoteRequestById(@PathParam("quoteReqId") Long quoteReqId) {
 		LOGGER.debug("getQuoteRequestById start:{}", quoteReqId);
 		QuoteRequestResp result = null;
-
+		GenericAPIError genericAPIError = null;
 		try {
 			result = this.quoteRequestDs.getQuoteRequestById(quoteReqId,
 					QuoteLoadStrategies.ALL);
 		} catch (Exception e) {
-			exceptionHandle(e);
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 
 		LOGGER.debug("getQuoteRequestById end:{}");
-		return buildResponse(result);
+		return QuotesAPIUtils.buildResponse(result, genericAPIError);
 	}
 
 	@Override
@@ -89,17 +90,17 @@ public class QuoteRequestAPIImpl extends AbstractAPISupport implements
 		LOGGER.debug("updateQuoteRequestStatus start:{}");
 		Long id = null;
 		QuoteRequestResp result = null;
-
+		GenericAPIError genericAPIError = null;
 		try {
 			result = this.quoteRequestDs.updateQuoteRequestStatus(quoteReqId,
 					quotesRequest.getStatus());
 			id = result.getId();
 		} catch (Exception e) {
-			exceptionHandle(e);
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 
 		LOGGER.debug("updateQuoteRequestStatus end:{}");
-		return buildResponse(id);
+		return QuotesAPIUtils.buildResponse(id, genericAPIError);
 	}
 
 	@Override
@@ -111,16 +112,16 @@ public class QuoteRequestAPIImpl extends AbstractAPISupport implements
 			List<ServiceProviderQuote> serviceProviderQuotes) {
 		LOGGER.debug("addProviderQuotes start:{}");
 		Long id = quoteReqId;
-
+		GenericAPIError genericAPIError = null;
 		try {
 			this.quoteRequestDs.addProviderQuotes(quoteReqId,
 					serviceProviderQuotes);
 		} catch (Exception e) {
-			exceptionHandle(e);
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 
 		LOGGER.debug("updateQuoteRequestStatus end:{}");
-		return buildResponse(id);
+		return QuotesAPIUtils.buildResponse(id, genericAPIError);
 	}
 
 	@Override
@@ -132,29 +133,30 @@ public class QuoteRequestAPIImpl extends AbstractAPISupport implements
 		LOGGER.debug("getAllProviderQuotesByQuoteId start:{}", quoteReqId);
 		QuoteRequestResp quoteRequestResp = null;
 		List<ServiceProviderQuote> serviceProviderQuotes = null;
-
+		GenericAPIError genericAPIError = null;
 		try {
 			quoteRequestResp = this.quoteRequestDs
 					.getQuoteRequestById(quoteReqId,
 							QuoteLoadStrategies.LOAD_PROVIDER_QUOTE_REQUEST);
 			serviceProviderQuotes = quoteRequestResp.getServiceProviderQuotes();
 		} catch (Exception e) {
-			exceptionHandle(e);
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 		LOGGER.debug("updateQuoteRequestStatus end:{}");
-		return buildResponse(serviceProviderQuotes);
+		return QuotesAPIUtils.buildResponse(serviceProviderQuotes,
+				genericAPIError);
 	}
 
-	private void doValidationForCreation(QuoteRequestReq quoteRequest) {
-		if (quoteRequest == null) {
-			errorMessage = "QuoteRequestReq can not be null";
-		} else if (quoteRequest.getServiceConsumer() == null) {
+	private String doValidationForCreation(QuoteRequestReq quoteRequest) {
+		String errorMessage = null;
+		if (quoteRequest.getServiceConsumer() == null) {
 			errorMessage = "serviceConsumer can not be null";
 		} else if (StringUtils.isEmpty(quoteRequest.getStatus())) {
 			errorMessage = "status can not be null";
 		} else if (quoteRequest.getCategoryId() == null) {
 			errorMessage = "CategoryId can not be null";
 		}
+		return errorMessage;
 	}
 
 }

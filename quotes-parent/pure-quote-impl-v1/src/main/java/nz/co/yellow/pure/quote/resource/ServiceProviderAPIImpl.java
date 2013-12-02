@@ -9,7 +9,8 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
 
-import nz.co.yellow.pure.quote.AbstractAPISupport;
+import nz.co.yellow.pure.quote.GenericAPIError;
+import nz.co.yellow.pure.quote.QuotesAPIUtils;
 import nz.co.yellow.pure.quote.data.QuoteLoadStrategies;
 import nz.co.yellow.pure.quote.data.ServiceProviderReq;
 import nz.co.yellow.pure.quote.data.ServiceProviderResp;
@@ -23,8 +24,7 @@ import org.springframework.stereotype.Component;
 
 @Component("serviceProviderAPI")
 @Path("/pure/quote/serviceProvider")
-public class ServiceProviderAPIImpl extends AbstractAPISupport implements
-		ServiceProviderAPI {
+public class ServiceProviderAPIImpl implements ServiceProviderAPI {
 
 	private static final Logger LOGGER = LoggerFactory
 			.getLogger(ServiceProviderAPIImpl.class);
@@ -40,20 +40,21 @@ public class ServiceProviderAPIImpl extends AbstractAPISupport implements
 		LOGGER.debug("createServiceProvider start:{}");
 		ServiceProviderResp result = null;
 		Long id = null;
-		if (StringUtils.isEmpty(serviceProvider.getUserId())) {
-			errorMessage = "serviceProvider user id can not be null";
-			respStatus = Response.Status.BAD_REQUEST;
-		} else {
-			try {
+		GenericAPIError genericAPIError = null;
+
+		try {
+			if (StringUtils.isEmpty(serviceProvider.getUserId())) {
+				throw new Exception("serviceProvider user id can not be null");
+			} else {
 				result = serviceProviderDs
 						.createServiceProvider(serviceProvider);
 				id = result.getId();
-			} catch (Exception e) {
-				exceptionHandle(e);
 			}
+		} catch (Exception e) {
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 		LOGGER.debug("createServiceProvider end:{}");
-		return buildResponse(id);
+		return QuotesAPIUtils.buildResponse(id, genericAPIError);
 	}
 
 	@Override
@@ -67,21 +68,20 @@ public class ServiceProviderAPIImpl extends AbstractAPISupport implements
 		LOGGER.debug("updateServiceProvider start:{}", providerId);
 		Long id = null;
 		ServiceProviderResp result = null;
-
-		if (StringUtils.isEmpty(serviceProvider.getUserId())) {
-			errorMessage = "serviceProvider user id can not be null";
-			respStatus = Response.Status.BAD_REQUEST;
-		} else {
-			try {
+		GenericAPIError genericAPIError = null;
+		try {
+			if (StringUtils.isEmpty(serviceProvider.getUserId())) {
+				throw new Exception("serviceProvider user id can not be null");
+			} else {
 				result = serviceProviderDs.updateServiceProvider(id,
 						serviceProvider);
 				id = result.getId();
-			} catch (Exception e) {
-				exceptionHandle(e);
 			}
+		} catch (Exception e) {
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 		LOGGER.debug("updateServiceProvider end:{}");
-		return buildResponse(id);
+		return QuotesAPIUtils.buildResponse(id, genericAPIError);
 	}
 
 	@Override
@@ -92,15 +92,15 @@ public class ServiceProviderAPIImpl extends AbstractAPISupport implements
 			@PathParam("providerId") Long providerId) {
 		LOGGER.debug("getServiceProviderById start:{}", providerId);
 		ServiceProviderResp resultDto = null;
-
+		GenericAPIError genericAPIError = null;
 		try {
 			resultDto = serviceProviderDs.getServiceProviderById(providerId,
 					QuoteLoadStrategies.ALL);
 		} catch (Exception e) {
-			exceptionHandle(e);
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 		LOGGER.debug("getServiceProviderById end:{}");
-		return buildResponse(resultDto);
+		return QuotesAPIUtils.buildResponse(resultDto, genericAPIError);
 	}
 
 	@Override

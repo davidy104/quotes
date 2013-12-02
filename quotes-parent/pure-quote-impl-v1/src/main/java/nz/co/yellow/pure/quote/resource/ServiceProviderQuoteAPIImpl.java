@@ -8,7 +8,8 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
 
-import nz.co.yellow.pure.quote.AbstractAPISupport;
+import nz.co.yellow.pure.quote.GenericAPIError;
+import nz.co.yellow.pure.quote.QuotesAPIUtils;
 import nz.co.yellow.pure.quote.data.ServiceProviderQuote;
 import nz.co.yellow.pure.quote.ds.ServiceProviderQuoteDS;
 
@@ -20,8 +21,7 @@ import org.springframework.stereotype.Component;
 
 @Component("serviceProviderQuoteAPI")
 @Path("/pure/quote/serviceProviderQuote")
-public class ServiceProviderQuoteAPIImpl extends AbstractAPISupport implements
-		ServiceProviderQuoteAPI {
+public class ServiceProviderQuoteAPIImpl implements ServiceProviderQuoteAPI {
 	private static final Logger LOGGER = LoggerFactory
 			.getLogger(ServiceProviderQuoteAPIImpl.class);
 
@@ -37,16 +37,16 @@ public class ServiceProviderQuoteAPIImpl extends AbstractAPISupport implements
 		LOGGER.debug("getServiceProviderQuoteById start:{}",
 				serviceProviderQuoteId);
 		ServiceProviderQuote resultDto = null;
-
+		GenericAPIError genericAPIError = null;
 		try {
 			resultDto = serviceProviderQuoteDs
 					.getServiceProviderQuoteById(serviceProviderQuoteId);
 		} catch (Exception e) {
-			exceptionHandle(e);
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 
 		LOGGER.debug("getServiceProviderQuoteById end");
-		return buildResponse(resultDto);
+		return QuotesAPIUtils.buildResponse(resultDto, genericAPIError);
 	}
 
 	@Override
@@ -61,24 +61,23 @@ public class ServiceProviderQuoteAPIImpl extends AbstractAPISupport implements
 				serviceProviderQuoteId);
 		Long id = null;
 		ServiceProviderQuote result = null;
-
-		if (StringUtils.isEmpty(serviceProviderQuote.getStatus())) {
-			errorMessage = "status can not be null";
-			respStatus = Response.Status.BAD_REQUEST;
-		} else {
-			try {
+		GenericAPIError genericAPIError = null;
+		try {
+			if (StringUtils.isEmpty(serviceProviderQuote.getStatus())) {
+				throw new Exception("status can not be null");
+			} else {
 				result = serviceProviderQuoteDs
 						.updateServiceProviderQuoteStatus(
 								serviceProviderQuoteId,
 								serviceProviderQuote.getStatus());
 				id = result.getId();
-			} catch (Exception e) {
-				exceptionHandle(e);
 			}
+		} catch (Exception e) {
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 
 		LOGGER.debug("updateServiceProviderQuoteStatus end:{}");
-		return buildResponse(id);
+		return QuotesAPIUtils.buildResponse(id, genericAPIError);
 	}
 
 }

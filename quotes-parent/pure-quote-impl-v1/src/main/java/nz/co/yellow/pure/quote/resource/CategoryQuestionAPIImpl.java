@@ -12,7 +12,8 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
-import nz.co.yellow.pure.quote.AbstractAPISupport;
+import nz.co.yellow.pure.quote.GenericAPIError;
+import nz.co.yellow.pure.quote.QuotesAPIUtils;
 import nz.co.yellow.pure.quote.data.CategoryQuestion;
 import nz.co.yellow.pure.quote.ds.CategoryQuestionDS;
 
@@ -23,14 +24,13 @@ import org.springframework.stereotype.Component;
 
 /**
  * CategoryQuestionAPI implementation see{CategoryQuestionAPI}
- * 
+ *
  * @author david
- * 
+ *
  */
 @Component("categoryQuestionAPI")
 @Path("/pure/quote/categoryQuestion")
-public class CategoryQuestionAPIImpl extends AbstractAPISupport implements
-		CategoryQuestionAPI {
+public class CategoryQuestionAPIImpl implements CategoryQuestionAPI {
 
 	private static final Logger LOGGER = LoggerFactory
 			.getLogger(CategoryQuestionAPIImpl.class);
@@ -45,17 +45,18 @@ public class CategoryQuestionAPIImpl extends AbstractAPISupport implements
 	public Response createCategoryQuestion(CategoryQuestion categoryQuestion) {
 		LOGGER.debug("createCategoryQuestion start:{}");
 		CategoryQuestion result = null;
+		GenericAPIError genericAPIError = null;
 		Long id = null;
 		try {
 			result = categoryQuestionDs
 					.createCategoryQuestion(categoryQuestion);
 			id = result.getId();
 		} catch (Exception e) {
-			exceptionHandle(e);
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 
 		LOGGER.debug("createCategoryQuestion end:{}");
-		return buildResponse(id);
+		return QuotesAPIUtils.buildResponse(id, genericAPIError);
 	}
 
 	@Override
@@ -66,15 +67,15 @@ public class CategoryQuestionAPIImpl extends AbstractAPISupport implements
 			@PathParam("categoryQuestionId") Long categoryQuestionId) {
 		LOGGER.debug("getCategoryQuestionById start:{}", categoryQuestionId);
 		CategoryQuestion resultDto = null;
-
+		GenericAPIError genericAPIError = null;
 		try {
 			resultDto = categoryQuestionDs
 					.getCategoryQuestionById(categoryQuestionId);
 		} catch (Exception e) {
-			exceptionHandle(e);
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 		LOGGER.debug("getCategoryQuestionById end:{}");
-		return buildResponse(resultDto);
+		return QuotesAPIUtils.buildResponse(resultDto, genericAPIError);
 	}
 
 	@Override
@@ -97,17 +98,18 @@ public class CategoryQuestionAPIImpl extends AbstractAPISupport implements
 			CategoryQuestion categoryQuestion) {
 		LOGGER.debug("updateCategoryQuestion start:{}", categoryQuestionId);
 		CategoryQuestion resultDto = null;
+		GenericAPIError genericAPIError = null;
 		Long id = null;
 		try {
 			resultDto = this.categoryQuestionDs.updateCategoryQuestion(
 					categoryQuestionId, categoryQuestion);
 			id = resultDto.getId();
 		} catch (Exception e) {
-			exceptionHandle(e);
+			genericAPIError = QuotesAPIUtils.errorHandle(e);
 		}
 
 		LOGGER.debug("updateCategoryQuestion end:{}");
-		return buildResponse(id);
+		return QuotesAPIUtils.buildResponse(id, genericAPIError);
 	}
 
 	@Override

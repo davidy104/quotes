@@ -12,7 +12,9 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
-import nz.co.yellow.spider.messaging.AbstractAPISupport;
+import nz.co.yellow.spider.messaging.GenericAPIError;
+import nz.co.yellow.spider.messaging.MessagingAPIUtils;
+import nz.co.yellow.spider.messaging.ValidationException;
 import nz.co.yellow.spider.messaging.data.Message;
 import nz.co.yellow.spider.messaging.data.MessageReq;
 import nz.co.yellow.spider.messaging.data.MessageResp;
@@ -29,7 +31,7 @@ import org.springframework.stereotype.Component;
 
 @Component("messageAPI")
 @Path("/spider/messaging")
-public class MessageAPIImpl extends AbstractAPISupport implements MessageAPI {
+public class MessageAPIImpl implements MessageAPI {
 
 	private static final Logger LOGGER = LoggerFactory
 			.getLogger(MessageAPIImpl.class);
@@ -46,16 +48,16 @@ public class MessageAPIImpl extends AbstractAPISupport implements MessageAPI {
 		LOGGER.debug("createMessageThread start:{}");
 		Long id = null;
 		MessageThreadResp result = null;
-
+		GenericAPIError genericAPIError = null;
 		try {
 			result = messageDs.createMsgThread(messageThread);
 			id = result.getMessageThreadId();
 		} catch (Exception e) {
-			exceptionHandle(e);
+			genericAPIError = MessagingAPIUtils.errorHandle(e);
 		}
 
 		LOGGER.debug("createMessageThread end:{}");
-		return buildResponse(id);
+		return MessagingAPIUtils.buildResponse(id, genericAPIError);
 	}
 
 	@Override
@@ -66,24 +68,22 @@ public class MessageAPIImpl extends AbstractAPISupport implements MessageAPI {
 	public Response createMessage(MessageReq message) {
 		LOGGER.debug("createMessage start:{}");
 		Long msgId = null;
-
-		if (message.getCreator() == null) {
-			errorMessage = "Message creator can not be null";
-			respStatus = Response.Status.BAD_REQUEST;
-		} else if (message.getThreadId() == null) {
-			errorMessage = "ThreadId can not be null";
-			respStatus = Response.Status.BAD_REQUEST;
-		} else {
-			try {
+		GenericAPIError genericAPIError = null;
+		try {
+			if (message.getCreator() == null) {
+				throw new ValidationException("Message creator can not be null");
+			} else if (message.getThreadId() == null) {
+				throw new ValidationException("ThreadId can not be null");
+			} else {
 				MessageResp msgResp = messageDs.addMessageToThread(message);
 				msgId = msgResp.getMessageId();
-			} catch (Exception e) {
-				exceptionHandle(e);
 			}
+		} catch (Exception e) {
+			genericAPIError = MessagingAPIUtils.errorHandle(e);
 		}
 
 		LOGGER.debug("createMessage end:{}");
-		return buildResponse(msgId);
+		return MessagingAPIUtils.buildResponse(msgId, genericAPIError);
 	}
 
 	@Override
@@ -94,17 +94,17 @@ public class MessageAPIImpl extends AbstractAPISupport implements MessageAPI {
 			@PathParam("threadId") Long messageThreadId) {
 		LOGGER.debug("getMessageThreadById start:{}");
 		MessageThreadResp messageThread = null;
-
+		GenericAPIError genericAPIError = null;
 		try {
 			messageThread = messageDs.getMsgThreadById(messageThreadId,
 					ThreadMsgLoadStrategies.ALL);
 
 		} catch (Exception e) {
-			exceptionHandle(e);
+			genericAPIError = MessagingAPIUtils.errorHandle(e);
 		}
 
 		LOGGER.debug("getMessageThreadById end:{}", messageThread);
-		return buildResponse(messageThread);
+		return MessagingAPIUtils.buildResponse(messageThread, genericAPIError);
 	}
 
 	@Override
@@ -116,21 +116,17 @@ public class MessageAPIImpl extends AbstractAPISupport implements MessageAPI {
 			@QueryParam("userId") String userId) {
 		LOGGER.debug("getMessagesByThreadAndUser start:{}");
 		List<MessageResp> messages = null;
+		GenericAPIError genericAPIError = null;
 
-		if (threadId == null || StringUtils.isEmpty(userId)) {
-			errorMessage = "either threadId or userId can not be null";
-			respStatus = Response.Status.BAD_REQUEST;
-		} else {
-			try {
-				messages = messageDs.getMessageByThreadIdAndParticipantUserId(
-						threadId, userId);
-			} catch (Exception e) {
-				exceptionHandle(e);
-			}
+		try {
+			messages = messageDs.getMessageByThreadIdAndParticipantUserId(
+					threadId, userId);
+		} catch (Exception e) {
+			genericAPIError = MessagingAPIUtils.errorHandle(e);
 		}
 
 		LOGGER.debug("createMessage end:{}");
-		return buildResponse(messages);
+		return MessagingAPIUtils.buildResponse(messages, genericAPIError);
 	}
 
 	@Override
@@ -142,23 +138,22 @@ public class MessageAPIImpl extends AbstractAPISupport implements MessageAPI {
 			MessageReq message) {
 		LOGGER.debug("updateMessage start:{}");
 		Message updatedMessage = null;
-
+		GenericAPIError genericAPIError = null;
 		String readTime = message.getReadTime();
 		String status = message.getStatus();
-		if (StringUtils.isEmpty(readTime) || StringUtils.isEmpty(status)) {
-			errorMessage = "Status or readTime can not be null for Message update";
-			respStatus = Response.Status.BAD_REQUEST;
-		} else {
-			try {
+		try {
+			if (StringUtils.isEmpty(readTime) || StringUtils.isEmpty(status)) {
+				throw new ValidationException(
+						"Status or readTime can not be null for Message update");
+			} else {
 				updatedMessage = messageDs.updateMessageReadTimeAndStatus(
 						messageId, readTime, status);
-			} catch (Exception e) {
-				exceptionHandle(e);
 			}
+		} catch (Exception e) {
+			genericAPIError = MessagingAPIUtils.errorHandle(e);
 		}
-
 		LOGGER.debug("updateMessage end:{}");
-		return buildResponse(updatedMessage);
+		return MessagingAPIUtils.buildResponse(updatedMessage, genericAPIError);
 	}
 
 	@Override
@@ -170,22 +165,22 @@ public class MessageAPIImpl extends AbstractAPISupport implements MessageAPI {
 			MessageThreadReq messageThread) {
 		LOGGER.debug("updateThreadStatus start:{}");
 		MessageThreadResp updatedMessageThread = null;
-
+		GenericAPIError genericAPIError = null;
 		String status = messageThread.getStatus();
-		if (StringUtils.isEmpty(status)) {
-			errorMessage = "Status can not be null for MessageThread update";
-			respStatus = Response.Status.BAD_REQUEST;
-		} else {
-			try {
+		try {
+			if (StringUtils.isEmpty(status)) {
+				throw new ValidationException(
+						"Status can not be null for MessageThread update");
+			} else {
 				updatedMessageThread = this.messageDs
 						.updateMessageThreadStatus(threadId, status);
-			} catch (Exception e) {
-				exceptionHandle(e);
 			}
+		} catch (Exception e) {
+			genericAPIError = MessagingAPIUtils.errorHandle(e);
 		}
-
 		LOGGER.debug("updateThreadStatus end:{}");
-		return buildResponse(updatedMessageThread);
+		return MessagingAPIUtils.buildResponse(updatedMessageThread,
+				genericAPIError);
 	}
 
 }
